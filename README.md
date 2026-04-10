@@ -26,3 +26,7 @@ brew install fink-lang/tap/fink
 
 Formulae in this tap track releases of [fink-lang/fink](https://github.com/fink-lang/fink).
 See the [releases page](https://github.com/fink-lang/fink/releases) for changelogs.
+
+## License
+
+[MIT](LICENSE) © fink-lang
