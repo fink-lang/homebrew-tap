@@ -19,7 +19,8 @@ brew install fink-lang/tap/fink
 
 - **fink** — the ƒink compiler (`fink`) bundled with cross-target `finkrt` runtimes for
   `aarch64-apple-darwin`, `x86_64-apple-darwin`, `aarch64-unknown-linux-gnu`, and
-  `x86_64-unknown-linux-gnu`.
+  `x86_64-unknown-linux-gnu`. Supported on macOS (Apple Silicon and Intel) and
+  Linux (aarch64 and x86_64) via [Linuxbrew](https://docs.brew.sh/Homebrew-on-Linux).
 
 ## Releases
 
