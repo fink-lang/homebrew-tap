@@ -1,0 +1,208 @@
+name: Bump fink formula
+
+# Reacts to a `repository_dispatch` event fired by fink-lang/fink's release
+# workflow once a new release has been published. The sender uses an
+# installation token from the `fink-release-bot` GitHub App (scoped to
+# contents:write on this repo) — the handler itself runs under this repo's
+# own GITHUB_TOKEN and needs no cross-repo auth.
+#
+# Payload: client_payload.version — e.g. "v0.49.2" (with leading v).
+#
+# Design notes:
+# - Idempotent on version: if Formula/fink.rb is already at the requested
+#   version, the job exits cleanly without touching anything.
+# - Idempotent on branch: if the bump branch for this version already
+#   exists remotely, assume a PR is already open and exit cleanly. The
+#   next bump will have a different version and a different branch name,
+#   so there's no need to force-push or cherry-pick.
+# - SHA256s are fetched from the release's .sha256 sidecar files rather
+#   than re-hashing tarballs, so they match exactly what the release
+#   publisher computed.
+
+on:
+  repository_dispatch:
+    types: [fink-released]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag to bump to (e.g. v0.49.2)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve version
+        id: ver
+        env:
+          DISPATCH_VERSION: ${{ github.event.client_payload.version }}
+          MANUAL_VERSION: ${{ github.event.inputs.version }}
+        run: |
+          set -euo pipefail
+          raw="${DISPATCH_VERSION:-$MANUAL_VERSION}"
+          if [[ -z "$raw" ]]; then
+            echo "::error::no version supplied (client_payload.version or inputs.version)"
+            exit 1
+          fi
+          # Accept with or without leading 'v'; emit both forms.
+          num="${raw#v}"
+          tag="v${num}"
+          if [[ ! "$num" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::version '$raw' is not semver (expected vX.Y.Z)"
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "num=$num" >> "$GITHUB_OUTPUT"
+          echo "branch=bot/bump-fink-$tag" >> "$GITHUB_OUTPUT"
+          echo "Resolved version: tag=$tag num=$num"
+
+      - uses: actions/checkout@v4
+
+      - name: Check for existing bump branch
+        id: branch
+        env:
+          BRANCH: ${{ steps.ver.outputs.branch }}
+        run: |
+          set -euo pipefail
+          if git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
+            echo "Branch $BRANCH already exists on origin — assuming a PR is already open."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Idempotency check
+        id: check
+        if: steps.branch.outputs.skip != 'true'
+        env:
+          NUM: ${{ steps.ver.outputs.num }}
+        run: |
+          set -euo pipefail
+          current=$(grep -E '^\s*version\s+"' Formula/fink.rb | sed -E 's/.*"([^"]+)".*/\1/')
+          echo "Current formula version: $current"
+          echo "Requested version:       $NUM"
+          if [[ "$current" == "$NUM" ]]; then
+            echo "Formula already at $NUM — nothing to do."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Fetch sha256 sidecars
+        if: steps.branch.outputs.skip != 'true' && steps.check.outputs.skip != 'true'
+        id: hashes
+        env:
+          TAG: ${{ steps.ver.outputs.tag }}
+          NUM: ${{ steps.ver.outputs.num }}
+        run: |
+          set -euo pipefail
+          base="https://github.com/fink-lang/fink/releases/download/${TAG}"
+          targets=(
+            aarch64-apple-darwin
+            x86_64-apple-darwin
+            aarch64-unknown-linux-gnu
+            x86_64-unknown-linux-gnu
+          )
+          for triple in "${targets[@]}"; do
+            file="fink-${NUM}-${triple}.tar.gz"
+            url="${base}/${file}.sha256"
+            echo "Fetching $url"
+            # .sha256 files are small (one line: "<hex>  <filename>"). Fail
+            # the job if the sidecar is missing — we'd rather halt than
+            # write a half-bumped formula.
+            line=$(curl -fsSL "$url")
+            hash=$(echo "$line" | awk '{print $1}')
+            if [[ ! "$hash" =~ ^[0-9a-f]{64}$ ]]; then
+              echo "::error::bad sha256 from $url: $line"
+              exit 1
+            fi
+            # Expose each hash as an output, e.g. hash_aarch64_apple_darwin.
+            key=$(echo "$triple" | tr '-' '_')
+            echo "hash_${key}=${hash}" >> "$GITHUB_OUTPUT"
+            echo "  $triple = $hash"
+          done
+
+      - name: Rewrite Formula/fink.rb
+        if: steps.branch.outputs.skip != 'true' && steps.check.outputs.skip != 'true'
+        env:
+          NUM: ${{ steps.ver.outputs.num }}
+          H_AARCH64_DARWIN: ${{ steps.hashes.outputs.hash_aarch64_apple_darwin }}
+          H_X86_64_DARWIN: ${{ steps.hashes.outputs.hash_x86_64_apple_darwin }}
+          H_AARCH64_LINUX: ${{ steps.hashes.outputs.hash_aarch64_unknown_linux_gnu }}
+          H_X86_64_LINUX: ${{ steps.hashes.outputs.hash_x86_64_unknown_linux_gnu }}
+        run: |
+          set -euo pipefail
+          # Use Ruby (already on the runner) to do a structured rewrite
+          # rather than fragile sed. The formula is Ruby, after all.
+          ruby - <<'RUBY'
+          path = "Formula/fink.rb"
+          num  = ENV.fetch("NUM")
+          hashes = {
+            "aarch64-apple-darwin"       => ENV.fetch("H_AARCH64_DARWIN"),
+            "x86_64-apple-darwin"        => ENV.fetch("H_X86_64_DARWIN"),
+            "aarch64-unknown-linux-gnu"  => ENV.fetch("H_AARCH64_LINUX"),
+            "x86_64-unknown-linux-gnu"   => ENV.fetch("H_X86_64_LINUX"),
+          }
+
+          src = File.read(path)
+
+          # 1. Top-level version line.
+          unless src.sub!(/^(\s*version\s+")[^"]+(")/) { "#{$1}#{num}#{$2}" }
+            abort "failed to find top-level version line in #{path}"
+          end
+
+          # 2. For each target, rewrite the URL and the sha256 that
+          #    immediately follows it. The URL embeds the version twice
+          #    (as v<num> in the path and <num> in the filename).
+          hashes.each do |triple, hash|
+            block_re = %r{
+              (url\s+")
+              https://github\.com/fink-lang/fink/releases/download/v[\d.]+/fink-[\d.]+-#{Regexp.escape(triple)}\.tar\.gz
+              (")
+              (\s*\n\s*sha256\s+")[0-9a-f]{64}(")
+            }x
+            new_url = "https://github.com/fink-lang/fink/releases/download/v#{num}/fink-#{num}-#{triple}.tar.gz"
+            unless src.sub!(block_re) { "#{$1}#{new_url}#{$2}#{$3}#{hash}#{$4}" }
+              abort "failed to rewrite block for #{triple} — formula layout may have changed"
+            end
+          end
+
+          File.write(path, src)
+          puts "Rewrote #{path} to version #{num}"
+          RUBY
+          echo "--- diff ---"
+          git --no-pager diff Formula/fink.rb
+
+      - name: Create pull request
+        if: steps.branch.outputs.skip != 'true' && steps.check.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.ver.outputs.tag }}
+          NUM: ${{ steps.ver.outputs.num }}
+          BRANCH: ${{ steps.ver.outputs.branch }}
+        run: |
+          set -euo pipefail
+          git config user.name  "fink-release-bot"
+          git config user.email "fink-release-bot@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add Formula/fink.rb
+          git commit -m "chore: bump fink to ${TAG}"
+          git push -u origin "$BRANCH"
+          gh pr create \
+            --base main \
+            --head "$BRANCH" \
+            --title "chore: bump fink to ${TAG}" \
+            --body "$(cat <<EOF
+          Automated bump triggered by release of [${TAG}](https://github.com/fink-lang/fink/releases/tag/${TAG}).
+
+          - Version: \`${NUM}\`
+          - SHA256s fetched from the release's \`.sha256\` sidecar files.
+
+          Merge once the release notes look good.
+          EOF
+          )"

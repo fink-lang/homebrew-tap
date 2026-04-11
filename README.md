@@ -27,6 +27,12 @@ brew install fink-lang/tap/fink
 Formulae in this tap track releases of [fink-lang/fink](https://github.com/fink-lang/fink).
 See the [releases page](https://github.com/fink-lang/fink/releases) for changelogs.
 
+Version bumps are automated: when `fink-lang/fink` publishes a new release,
+its release workflow fires a `repository_dispatch` event at this repo
+(authenticated via the `fink-release-bot` GitHub App) and the
+[`Bump fink formula`](.github/workflows/bump-fink.yml) workflow opens a PR
+with the new version and SHA256s. The PR is reviewed and merged manually.
+
 ## License
 
 [MIT](LICENSE) © fink-lang
