@@ -1,7 +1,7 @@
 class Fink < Formula
   desc "ƒink — a functional programming language and compiler toolchain"
   homepage "https://github.com/fink-lang/fink"
-  version "0.72.1"
+  version "0.73.0"
   license "MIT"
 
   livecheck do
@@ -11,23 +11,23 @@ class Fink < Formula
 
   on_macos do
     on_arm do
-      url "https://github.com/fink-lang/fink/releases/download/v0.72.1/fink-0.72.1-aarch64-apple-darwin.tar.gz"
-      sha256 "42f62a41d9a9a4a6998952228183d6b751d61c7c9f8d45bfc6e6c3aabf8002cc"
+      url "https://github.com/fink-lang/fink/releases/download/v0.73.0/fink-0.73.0-aarch64-apple-darwin.tar.gz"
+      sha256 "f354820be8a3359c96d8136fbb07e5ec6acd7173bff73acb327c77bccfa674cc"
     end
     on_intel do
-      url "https://github.com/fink-lang/fink/releases/download/v0.72.1/fink-0.72.1-x86_64-apple-darwin.tar.gz"
-      sha256 "29a7d9de680570220bf9dc8aeb17097f8a0a6520bd333d63521f0949f0acc443"
+      url "https://github.com/fink-lang/fink/releases/download/v0.73.0/fink-0.73.0-x86_64-apple-darwin.tar.gz"
+      sha256 "8815dc6c6896e2e5a8abd37070570c1e5b63f16ec61d9128ae64876e692d7b99"
     end
   end
 
   on_linux do
     on_arm do
-      url "https://github.com/fink-lang/fink/releases/download/v0.72.1/fink-0.72.1-aarch64-unknown-linux-gnu.tar.gz"
-      sha256 "1ce5d5d6670dec47d1bc31abd32e33873d9fbc65d034d8412a1f0c23b40c8a31"
+      url "https://github.com/fink-lang/fink/releases/download/v0.73.0/fink-0.73.0-aarch64-unknown-linux-gnu.tar.gz"
+      sha256 "25260b3d3e4f7b3b0534af21e3b67d111d6e949f851a5298ddc9a58bec5bc6fc"
     end
     on_intel do
-      url "https://github.com/fink-lang/fink/releases/download/v0.72.1/fink-0.72.1-x86_64-unknown-linux-gnu.tar.gz"
-      sha256 "6cef7051619476d7812aa367bd3260cde71800934a76ab3570bcc5f125481e10"
+      url "https://github.com/fink-lang/fink/releases/download/v0.73.0/fink-0.73.0-x86_64-unknown-linux-gnu.tar.gz"
+      sha256 "65f70bcb02bca69a5e24d62205a74144c745de7c7758a0874f5c9abe156b81f4"
     end
   end
 
