@@ -1,7 +1,7 @@
 class Fink < Formula
   desc "ƒink — a functional programming language and compiler toolchain"
   homepage "https://github.com/fink-lang/fink"
-  version "0.88.0"
+  version "0.89.0"
   license "MIT"
 
   livecheck do
@@ -11,23 +11,23 @@ class Fink < Formula
 
   on_macos do
     on_arm do
-      url "https://github.com/fink-lang/fink/releases/download/v0.88.0/fink-0.88.0-aarch64-apple-darwin.tar.gz"
-      sha256 "e067817fc999888e4b17b15fe9226f810e556a82cf3ad2124bbdcc8e580276fe"
+      url "https://github.com/fink-lang/fink/releases/download/v0.89.0/fink-0.89.0-aarch64-apple-darwin.tar.gz"
+      sha256 "4440b7906cbc8212302af797927df51997816138c0c8bf88244acc29aa0923f3"
     end
     on_intel do
-      url "https://github.com/fink-lang/fink/releases/download/v0.88.0/fink-0.88.0-x86_64-apple-darwin.tar.gz"
-      sha256 "f2a299d12db7e4e1092f2abaa725d3ae6edf9d69db7596e7421e912acacdc6b2"
+      url "https://github.com/fink-lang/fink/releases/download/v0.89.0/fink-0.89.0-x86_64-apple-darwin.tar.gz"
+      sha256 "1f34d39a502a22d1256465a525f9c0451cc67b8bdeff992dad1e0134098d0880"
     end
   end
 
   on_linux do
     on_arm do
-      url "https://github.com/fink-lang/fink/releases/download/v0.88.0/fink-0.88.0-aarch64-unknown-linux-gnu.tar.gz"
-      sha256 "65574435afa35a52f2963b6d32de1b7329bf3df8a41acc036d15ba6a6fdc4e16"
+      url "https://github.com/fink-lang/fink/releases/download/v0.89.0/fink-0.89.0-aarch64-unknown-linux-gnu.tar.gz"
+      sha256 "eb764077741b1b1910657d38fa3eb773f7b6529de5c3076ab6faea7754d24504"
     end
     on_intel do
-      url "https://github.com/fink-lang/fink/releases/download/v0.88.0/fink-0.88.0-x86_64-unknown-linux-gnu.tar.gz"
-      sha256 "2df5f0645f2ec2fbc00c99c2ab3026a5e5dbce2bf43535b0c1f7efa22d234c35"
+      url "https://github.com/fink-lang/fink/releases/download/v0.89.0/fink-0.89.0-x86_64-unknown-linux-gnu.tar.gz"
+      sha256 "aa9583a482157c27a7bd26c2b18b8526c83fc8fb6d1b75a920d5b086d80f0257"
     end
   end
 
